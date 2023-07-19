@@ -28,16 +28,15 @@ const int MOSI_pin = ??;
 
 
 #include "fpga.h"
-#include "serial_commands.h"
 
 
 const byte READ = 0b11111110;     // FPGA read command
 const byte WRITE = 0b00000001;   // FPGA write command
 
-#define SPI_CLK 100000
+#define SPI_CLK 4000000
 #define SPI_MODE SPI_MODE0
-//Sends a write command to FPGA
 
+#define SERIAL_BAUDRATE 115200
 
 // Tester board with teensy by Pedro 2022:
 // Uneeded since using the SPI library and on teensy these are already the correct pinouts (no need to add SS pin)
@@ -65,7 +64,7 @@ void setup() {
   // pinMode(MISO_pin, INPUT);
   // pinMode(MOSI_pin, OUTPUT);
 
-  Serial.begin(9600);
+  Serial.begin(SERIAL_BAUDRATE);
   SPI.begin();
   pinMode(chipSelectPin, OUTPUT);
   
@@ -85,45 +84,20 @@ void setup() {
 }
 
 
+unsigned int ni = 0;
 
 
 void loop() {
-  unsigned int read_value = 0xfa;
+  int read_value = 0xfa;
+  // unsigned int read_value = 0xfa;
 
-  // Serial.println("Loop...");
-  // delay(1000);  // do not print too fast!
-  // digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
-
-  
-
-  // highlight_led_byte(read_value);
-  // read_value =  readRegister(DEVICE_ID_ADDR, 1);
-  // delay(500);
-  // Serial.print("value: \t");
-  // Serial.println(read_value, HEX);
-  
-  // highlight_led_byte(read_value);
-
-  // delay(100);  // do not print too fast!
-
-  // highlight_led_byte(0x0);
-
-  // read_value =  readRegister(C2VCONFX0_ADDR, 2);
-  // Serial.println(read_value, HEX);
-  // Serial.println("write...");
-
-  // writeRegister(MODE_ADDR, 0xff);
-
-  // read_value =  readRegister(MODE_ADDR, 1);
-
-  // Serial.print("read value: \t");
-  // Serial.println(read_value, BIN);
 
   
   if(Serial.available() > 0){
 
 
-    String command_string = Serial.readString();  //read until timeout
+    // String command_string = Serial.readString();  //read until timeout
+    String command_string = Serial.readStringUntil('\n');  //read until terminator
     // Serial.print("Command received: ");
     // Serial.println(command_string);
     String command = splitStringDelimiter(command_string, 0, ' ');
@@ -167,16 +141,26 @@ void loop() {
       byte data_registers[] = {DATAX0_LEFT_N0_ADDR, DATAX0_RIGHT_N0_ADDR,
                         DATAX1_LEFT_N0_ADDR, DATAX1_RIGHT_N0_ADDR,
                         DATAY0_LEFT_N0_ADDR, DATAY0_RIGHT_N0_ADDR,
-                        DATAY1_LEFT_N0_ADDR, DATAY1_RIGHT_N0_ADDR,
+                        DATAY1_LEFT_N0_ADDR, DATAY1_RIGHT_N0_ADDR,()
                         DATAZ0_LEFT_N0_ADDR, DATAZ0_RIGHT_N0_ADDR,
                         DATAZ1_LEFT_N0_ADDR, DATAZ1_RIGHT_N0_ADDR
                         };
       int N_registers = sizeof(data_registers);
+          
 
       for (int i=0; i< N_registers; i++){
         reg_addr = data_registers[i];
         read_value =  readRegister(reg_addr, 3);
         // highlight_led_byte(reg_addr );
+
+        
+        // ####### DEBUG PURPOSES ONLY ############
+        if (i==0){
+          int sine_value = (int) 1000*sin(2*PI*ni/20)+500;
+          read_value = sine_value;
+          ni++;
+        }
+
         Serial.print(read_value);
         Serial.print(" ");
       }
@@ -366,11 +350,5 @@ void highlight_led_byte(byte value){
 
 
 
-// Serial
-
-Order read_order()
-{
-  return (Order) Serial.read();
-}
 
 

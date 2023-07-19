@@ -28,7 +28,7 @@ b'5 7\r\n'
 
 
 ### Read from register
- `read_reg [register_address]` 
+ `read_reg REGISTER_ADDRESS` 
 
  Reads 1 byte from the `register_address` position and sends back through serial with the syntax `[register_address] [value]`, where the `value` is the byte stored in memory.
 
@@ -41,7 +41,7 @@ Example:
 
 ### Write to register 
 
-`write_reg [register_address] [register_value]` 
+`write_reg REGISTER_ADDRESS REGISTER_VALUE` 
 
 Writes the `register_value` byte in the `register_address` memory position. It then reads the same register position and sends back the read value as in the `read_reg` command.
 
@@ -65,7 +65,7 @@ Example:
 
 ### Read memory sequence
 
- `read_memory [register_address] [length]`
+ `read_memory REGISTER_ADDRESS LENGTH`
  
  Reads `length` number of bytes starting from `register_address` and replies each byte delimited by spaces
 
@@ -85,8 +85,8 @@ Using the `master_spi_tester_cli.py` tool.
 Check the help command:
 
 ```
->python master_spi_tester_cli.py --help
-usage: master_spi_tester_cli.py [-h] [-n NAME] [-p PORT] [-b BAUD] [-st SERIAL_TIMEOUT] [-t TIMEOUT] [-w] [-r] [-rd] [-rm]
+> python master_spi_tester_cli.py -h
+usage: master_spi_tester_cli.py [-h] [-p PORT] [-b BAUD] [-st SERIAL_TIMEOUT] [-t TIMEOUT] [-w] [-r] [-rd [READ_DATA]] [-rm]
                                 [-rl read_memory_length] [-a register_address] [-v write_value]
 
 Master SPI Tester for FPGA
@@ -101,7 +101,8 @@ options:
                         Message reply timeout
   -w, --write           Write flag
   -r, --read            Read flag
-  -rd, --read_data      Read data flag
+  -rd [READ_DATA], --read_data [READ_DATA]
+                        Reads 1 or the given number of samples of all data
   -rm, --read_memory    Read memory flag
   -rl read_memory_length, --read_memory_length read_memory_length
                         Read memory length
@@ -118,7 +119,7 @@ The tool uses a the serial configuration stored in `master_spi_tester.ini`, whic
 To set the port, baud rate and timeouts from the command line:
 
 ```
->python master_spi_tester_cli.py -p COM6 -b 9600 -st 1
+> python master_spi_tester_cli.py -p COM6 -b 9600 -st 1
 Port is COM6
 Baud Rate is 9600
 Serial timeout is 1.0
@@ -130,11 +131,11 @@ Serial timeout is 1.0
 Accepts HEX values for the register address and values 
 Example:
 ```
->python master_spi_tester_cli.py -r -a 0x0
+> python master_spi_tester_cli.py -r -a 0x0
 Port is COM6
 Baud Rate is 9600
 Serial timeout is 1.0
-b'0 85\r\n'
+0 85
 ```
 
 
@@ -142,30 +143,33 @@ b'0 85\r\n'
 
 Example:
 ```
->python master_spi_tester_cli.py -w -a 0x05 -v 0xff
+> python master_spi_tester_cli.py -w -a 0x05 -v 0xff
 Port is COM6
 Baud Rate is 9600
 Serial timeout is 1.0
-b'5 7\r\n'
+5 7
 ```
 
 ### Read data
 
 Example:
 ```
-> >python master_spi_tester_cli.py -rd
+> python master_spi_tester_cli.py -rd
 Port is COM6
 Baud Rate is 9600
 Serial timeout is 1.0
-b'0 0 0 0 0 0 0 0 0 0 0 0 \r\n'
+0 0 0 0 0 0 0 0 0 0 0 0 
 ```
 
 ### Read memory sequence
 
 Example:
 ```
-> read_memory 0 18
-0 85 0 0 0 0 7 0 1 165 0 0 0 0 0 0 0 165 0
+> python master_spi_tester_cli.py -rm -a 0x0 -rl 18
+Port is COM6
+Baud Rate is 9600
+Serial timeout is 1.0
+0 85 0 0 0 0 7 0 1 165 0 0 0 0 0 0 0 165 0 0 0 0 0 0 0
 ```
 
 
