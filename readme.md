@@ -86,8 +86,12 @@ Check the help command:
 
 ```
 > python master_spi_tester_cli.py -h
-usage: master_spi_tester_cli.py [-h] [-p PORT] [-b BAUD] [-st SERIAL_TIMEOUT] [-t TIMEOUT] [-w] [-r] [-rd [READ_DATA]] [-rm]
-                                [-rl read_memory_length] [-a register_address] [-v write_value]
+usage: master_spi_tester_cli.py [-h] [-p PORT] [-b BAUD] [-st SERIAL_TIMEOUT] [-t TIMEOUT] [-w] [-r]
+                                [-rd [READ_DATA]] [-rm] [-rl read_memory_length] [-a register_address]
+                                [-v write_value] [-plot [PLOT]] [--plot_refresh_rate PLOT_REFRESH_RATE]
+                                [-s [SAVE_FILE]] [-dac VACT|VEXC|VCOMP X1|X2|..|Z2 VALUE]
+                                [--phase_delay PhaseDelay] [--en_oncyc enable_on_cycle_count]
+                                [--en_onperiod enable_on_period]
 
 Master SPI Tester for FPGA
 
@@ -110,6 +114,24 @@ options:
                         Register address
   -v write_value, --reg_value write_value
                         Write_value
+  -plot [PLOT], --plot [PLOT]
+                        Plots the retreived read_data samples. Passed argument is number of samples to
+                        plot.
+  --plot_refresh_rate PLOT_REFRESH_RATE
+                        Set the plot refresh rate
+  -s [SAVE_FILE], --save_file [SAVE_FILE]
+  --dac VACT|VEXC|VCOMP X1|X2|..|Z2 VALUE
+                        Set respective DAC (16bit) register value. Example: -dac VACT X1 1024
+  --phase_delay PhaseDelay
+                        C2V Configuration. PhaseDelay: defines the delay between modulation and
+                        demodualtion signals (delay = Nx7.2deg)
+  --en_oncyc enable_on_cycle_count
+                        C2V Configuration. EN_onCycCnt: defines the number of delay cycles between
+                        demodualtion signal and the switch EN (delay = Nx20ns)
+  --en_onperiod enable_on_period
+                        C2V Configuration. EN_onPeriod: defines the number of cycles the EN stays active
+                        (Period= Nx20ns)
+
 ```
 
 ### Serial configuration
@@ -150,17 +172,6 @@ Serial timeout is 1.0
 5 7
 ```
 
-### Read data
-
-Example:
-```
-> python master_spi_tester_cli.py -rd
-Port is COM6
-Baud Rate is 9600
-Serial timeout is 1.0
-0 0 0 0 0 0 0 0 0 0 0 0 
-```
-
 ### Read memory sequence
 
 Example:
@@ -170,6 +181,217 @@ Port is COM6
 Baud Rate is 9600
 Serial timeout is 1.0
 0 85 0 0 0 0 7 0 1 165 0 0 0 0 0 0 0 165 0 0 0 0 0 0 0
+```
+
+
+### Read data and Read data loop
+
+
+The read data routine is triggered by the `-rd [Nsamples]` or `--read_data [Nsamples]` argument. 
+If the `[Nsamples]` parameter is passed, the script loops to await and acquire that many samples, otherwise it acquires one.
+
+The read data routine assumes that the FPGA has been previously correctly configured with the respective DAC and phase values.
+It starts by setting the run mode as continous and then wakeup, which triggers the state machine to start the acquisition loop.
+
+The read data loop checks if the FIFO count is more than zero and reads those data points. 
+
+It is possible to plot the acquired data using the `--plot [plot_window]` argument, where `[plot_window]` is the number of samples plotted in the window, if ommited the default is 100 samples.
+
+The read data loop can also save the data into a `.csv` file directly while acquiring using the `--save_file FILENAME.CSV` argument.
+
+Example read a single line:
+```
+> python master_spi_tester_cli.py -rd
+Port is COM6
+Baud Rate is 115200
+Serial timeout is 0.5
+wakeup 0
+mode 1
+run 1
+wakeup 1
+count is:  5
+1689842383.9927056       [-451, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+
+```
+
+Example read 10 samples:
+```
+> python master_spi_tester_cli.py -rd 10
+Port is COM6
+Baud Rate is 115200
+Serial timeout is 0.5
+wakeup 0
+mode 1
+run 1
+wakeup 1
+count is:  5
+1689842411.901133        [-309, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  4
+1689842411.9091127       [-87, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  3
+1689842411.9150977       [190, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  2
+1689842411.921081        [499, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  1
+1689842411.9290586       [809, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842412.5100167       [1087, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842413.1293805       [1309, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842413.749236        [1451, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842414.368163        [1500, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842414.9888785       [1451, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+
+```
+
+Example read 10 samples and saving data to `output.csv` file:
+```
+> python master_spi_tester_cli.py -rd 10 --save_file output.csv
+Port is COM6
+Baud Rate is 115200
+Serial timeout is 0.5
+Saving data samples to  output.csv
+wakeup 0
+mode 1
+run 1
+wakeup 1
+count is:  5
+1689842437.2027397       [1309, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  4
+1689842437.2057302       [1087, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  3
+1689842437.2117157       [809, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  2
+1689842437.2167025       [500, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  1
+1689842437.2206903       [190, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842437.8120177       [-87, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842438.4320636       [-309, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842439.0509408       [-451, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842439.6702845       [-500, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842440.2901933       [-451, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+```
+
+The `output.csv` file has:
+```
+#time,x1_left,x1_right,x2_left,x2_right,y1_left,y1_right,y2_left,y2_right,z1_left,z1_right,z2_left,z2_right
+1689842437.202740,1309,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000
+1689842437.205730,1087,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000
+1689842437.211716,809,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000
+1689842437.216702,500,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000
+1689842437.220690,190,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000
+1689842437.812018,-87,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000
+1689842438.432064,-309,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000
+1689842439.050941,-451,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000
+1689842439.670285,-500,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000
+1689842440.290193,-451,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000,15000000
+```
+
+
+Example read and plot samples:
+```
+> python master_spi_tester_cli.py -rd 1000 --plot 20 --plot_refresh_rate 2
+Port is COM6
+Baud Rate is 115200
+Serial timeout is 0.5
+wakeup 0
+mode 1
+run 1
+wakeup 1
+count is:  5
+1689842573.2270744       [-309, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  4
+1689842573.2310643       [-87, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  3
+1689842573.2350533       [190, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  2
+1689842573.2380457       [499, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  1
+1689842573.2420352       [809, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842573.8354802       [1087, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842574.4559755       [1309, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842575.0768151       [1451, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842575.6967883       [1500, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  1
+1689842576.7488828       [1451, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842576.9352493       [1309, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842577.555581        [1087, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+count is:  0
+1689842578.174916        [809, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000, 15000000]
+
+
+...
+
+
+``` 
+
+If given, the `--plot_refresh_rate VALUE` sets the update rate in seconds of the plot.
+
+The plot sets the `xlim` and `ylim` to the minimum and maximum values of the available data in the plot window.
+
+The plot figure is:
+
+![Example plot window](plot_figure.png)
+
+
+
+
+
+
+
+### Configure parameters of the FPGA
+
+
+#### Settings the DAC values
+
+The FPGA controls the voltages set for the Actuation, the Excitation and the Compare Threshold of each channel [`x1` to `z2`] defined by its internal registers.
+
+To set the respective DAC values use the `--DAC VACT|VEXC|VCOMP X1|X2|..|Z2 VALUE`.
+
+The  routine writes and reads the written value from the register.
+
+```
+  --dac VACT|VEXC|VCOMP X1|X2|..|Z2 VALUE
+                        Set respective DAC (16bit) register value. Example: -dac VACT X1 1024
+```
+
+Example:
+```
+> python master_spi_tester_cli.py --dac VACT x1 12345
+Port is COM6
+Baud Rate is 115200
+Serial timeout is 0.5
+VACT_X1 12345
+```
+
+#### Settings the phase delay and enable cycle delay values
+
+These settings can be executed concurrently.
+
+```
+  --phase_delay PhaseDelay
+                        C2V Configuration. PhaseDelay: defines the delay between modulation and
+                        demodualtion signals (delay = Nx7.2deg)
+  --en_oncyc enable_on_cycle_count
+                        C2V Configuration. EN_onCycCnt: defines the number of delay cycles between
+                        demodualtion signal and the switch EN (delay = Nx20ns)
+  --en_onperiod enable_on_period
+                        C2V Configuration. EN_onPeriod: defines the number of cycles the EN stays active
+                        (Period= Nx20ns)
 ```
 
 
