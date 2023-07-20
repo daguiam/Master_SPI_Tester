@@ -88,24 +88,29 @@ unsigned int ni = 0;
 
 
 void loop() {
-  int read_value = 0xfa;
+  int read_value = 0xfffa;
   // unsigned int read_value = 0xfa;
+  String command_string = "";
+  String command = "";
+  String parameter1 = "";
+  String parameter2  = "";
+  byte reg_addr = 0;
+  byte reg_value = 0;
 
 
-  
   if(Serial.available() > 0){
 
 
     // String command_string = Serial.readString();  //read until timeout
-    String command_string = Serial.readStringUntil('\n');  //read until terminator
+    command_string = Serial.readStringUntil('\n');  //read until terminator
     // Serial.print("Command received: ");
     // Serial.println(command_string);
-    String command = splitStringDelimiter(command_string, 0, ' ');
-    String parameter1 = splitStringDelimiter(command_string, 1, ' ');
-    String parameter2 = splitStringDelimiter(command_string, 2, ' ');
+    command = splitStringDelimiter(command_string, 0, ' ');
+    parameter1 = splitStringDelimiter(command_string, 1, ' ');
+    parameter2 = splitStringDelimiter(command_string, 2, ' ');
 
-    byte reg_addr = (byte) byte(parameter1.toInt());
-    byte reg_value = (byte) byte(parameter2.toInt());
+    reg_addr = (byte) byte(parameter1.toInt());
+    reg_value = (byte) byte(parameter2.toInt());
 
     if (0){
       Serial.print(command);
@@ -117,20 +122,20 @@ void loop() {
     // Serial.println(parameter2);
 
     if (command == "device_id") {
-      read_value =  readRegister(DEVICE_ID_ADDR, 1);
+      read_value =  readRegister(DEVID, 1);
       highlight_led_byte(read_value);
 
     } else if (command == "write_reg") {
       writeRegister(reg_addr, reg_value);
       read_value =  readRegister(reg_addr, 1);
-      highlight_led_byte(read_value);
+      highlight_led_byte(reg_addr);
       Serial.print(reg_addr);
       Serial.print(" ");
       Serial.println(read_value);
       
     } else if (command == "read_reg") {
       read_value =  readRegister(reg_addr, 1);
-      highlight_led_byte(read_value);
+      highlight_led_byte(reg_addr);
       Serial.print(reg_addr);
       Serial.print(" ");
       Serial.println(read_value);
@@ -138,12 +143,20 @@ void loop() {
     } else if (command == "read_data") {
 
       // Reads complete pagination of data (12 registers)
-      byte data_registers[] = {DATAX0_LEFT_N0_ADDR, DATAX0_RIGHT_N0_ADDR,
-                        DATAX1_LEFT_N0_ADDR, DATAX1_RIGHT_N0_ADDR,
-                        DATAY0_LEFT_N0_ADDR, DATAY0_RIGHT_N0_ADDR,
-                        DATAY1_LEFT_N0_ADDR, DATAY1_RIGHT_N0_ADDR,()
-                        DATAZ0_LEFT_N0_ADDR, DATAZ0_RIGHT_N0_ADDR,
-                        DATAZ1_LEFT_N0_ADDR, DATAZ1_RIGHT_N0_ADDR
+      // byte data_registers[] = {DATAX0_LEFT_N0_ADDR, DATAX0_RIGHT_N0_ADDR,
+      //                   DATAX1_LEFT_N0_ADDR, DATAX1_RIGHT_N0_ADDR,
+      //                   DATAY0_LEFT_N0_ADDR, DATAY0_RIGHT_N0_ADDR,
+      //                   DATAY1_LEFT_N0_ADDR, DATAY1_RIGHT_N0_ADDR,()
+      //                   DATAZ0_LEFT_N0_ADDR, DATAZ0_RIGHT_N0_ADDR,
+      //                   DATAZ1_LEFT_N0_ADDR, DATAZ1_RIGHT_N0_ADDR
+      //                   };
+
+      byte data_registers[] = {DATAX1_LEFT, DATAX1_RIGHT,
+                        DATAX2_LEFT, DATAX2_RIGHT,
+                        DATAY1_LEFT, DATAY1_RIGHT,
+                        DATAY2_LEFT, DATAY2_RIGHT,
+                        DATAZ1_LEFT, DATAZ1_RIGHT,
+                        DATAZ2_LEFT, DATAZ2_RIGHT
                         };
       int N_registers = sizeof(data_registers);
           
@@ -169,7 +182,7 @@ void loop() {
       
     } else if (command == "read_memory") {
       // Reads memory starting from reg_addr and for reg_value bytes
-      highlight_led_byte(read_value);
+      highlight_led_byte(reg_addr);
       Serial.print(reg_addr);
       for (int i=0; i<reg_value; i++){
         read_value =  readRegister(reg_addr+i, 1);
@@ -179,47 +192,647 @@ void loop() {
       Serial.println("");
   
 
+    } else if (command == "fifo_status") {
+      // Reads FIFO count
+      int fifo_count=0;
+      int fifo_empty=0;
+      int fifo_full=0;
+      reg_addr = FIFO_STATUS;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 1);
+      fifo_count = read_value & 0x70;
+      fifo_count = fifo_count >> 4;
+      fifo_empty = read_value & 0x01;
+      fifo_full = read_value & 0x04;
+      fifo_full = fifo_full>>2;
+      Serial.print("fifo_count");
+      Serial.print(" ");
+      Serial.println(fifo_count);
+      Serial.print("fifo_empty");
+      Serial.print(" ");
+      Serial.println(fifo_empty);
+      Serial.print("fifo_full");
+      Serial.print(" ");
+      Serial.println(fifo_full);
+
+    } else if (command == "fifo_count") {
+      // Reads FIFO count
+      int fifo_count=0;
+      reg_addr = FIFO_STATUS;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 1);
+      fifo_count = read_value & 0x70;
+      fifo_count = fifo_count >> 4;
+      Serial.print("fifo_count");
+      Serial.print(" ");
+      Serial.println(fifo_count);
+      
+    } else if (command == "fifo_empty") {
+      // Reads FIFO empty
+      int fifo_empty=0;
+
+      reg_addr = FIFO_STATUS;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 1);
+      fifo_empty = read_value & 0x01;
+      Serial.print("fifo_empty");
+      Serial.print(" ");
+      Serial.println(fifo_empty);
+      
+    } else if (command == "fifo_full") {
+      // Reads FIFO full
+      int fifo_full=0;
+      reg_addr = FIFO_STATUS;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 1);
+      fifo_full = read_value & 0x04;
+      fifo_full = fifo_full>>2;
+      Serial.print("fifo_full");
+      Serial.print(" ");
+      Serial.println(fifo_full);
+    
+    } else if (command == "fifo_size") {
+      // read fifo size
+      int fifo_size=0;
+      reg_addr = FIFO_SIZE;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 1);
+      fifo_size = read_value & 0x7;
+      
+      Serial.print("fifo_size");
+      Serial.print(" ");
+      Serial.println(fifo_size);
+
+    } else if (command == "set_fifo_size") {
+      // set fifo size
+      
+      reg_value = (byte) byte(parameter1.toInt());
+      reg_addr = FIFO_SIZE;
+      highlight_led_byte(reg_addr);
+      writeRegister(reg_addr, reg_value&0x7);
+      read_value =  readRegister(reg_addr, 1);
+      highlight_led_byte(reg_addr);
+      Serial.print("fifo_size");
+      Serial.print(" ");
+      Serial.println(read_value);
+
+
+    } else if (command == "mode") {
+      // read mode
+      reg_addr = MODE;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 1);
+      read_value = read_value & 0x7;
+      
+      Serial.print("mode");
+      Serial.print(" ");
+      Serial.println(read_value);
+
+    } else if (command == "set_mode") {
+      // set mode
+      reg_value = (byte) byte(parameter1.toInt());
+      reg_addr = MODE;
+      highlight_led_byte(reg_addr);
+      writeRegister(reg_addr, reg_value&0x7);
+      read_value =  readRegister(reg_addr, 1);
+      highlight_led_byte(reg_addr);
+      Serial.print("mode");
+      Serial.print(" ");
+      Serial.println(read_value);
+
+    } else if (command == "wakeup") {
+      // read wakeup
+      reg_addr = WAKEUP;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 1);
+      read_value = read_value & 0x1;
+      
+      Serial.print("wakeup");
+      Serial.print(" ");
+      Serial.println(read_value);
+
+    } else if (command == "set_wakeup") {
+      // set wakeup
+      reg_value = (byte) byte(parameter1.toInt());
+      reg_addr = WAKEUP;
+      highlight_led_byte(reg_addr);
+      writeRegister(reg_addr, reg_value&0x1);
+      read_value =  readRegister(reg_addr, 1);
+      highlight_led_byte(reg_addr);
+      Serial.print("wakeup");
+      Serial.print(" ");
+      Serial.println(read_value);
+
+    } else if (command == "run") {
+      // read run
+      reg_addr = RUN;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 1);
+      read_value = read_value & 0x1;
+      
+      Serial.print("run");
+      Serial.print(" ");
+      Serial.println(read_value);
+
+    } else if (command == "set_run") {
+      // set run
+      reg_addr = RUN;
+      reg_value = (byte) byte(parameter1.toInt());
+      highlight_led_byte(reg_addr);
+      writeRegister(reg_addr, reg_value&0x1);
+      read_value =  readRegister(reg_addr, 1);
+      highlight_led_byte(reg_addr);
+      Serial.print("run");
+      Serial.print(" ");
+      Serial.println(read_value);
+
+
+    } else if (command == "C2V_CONFIG0") {
+      // read
+      reg_addr = C2V_CONFIG0;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 1);
+      read_value = read_value & 0x1f;
+      Serial.print("C2V_CONFIG0");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_C2V_CONFIG0") {
+      // set
+      reg_value = (byte) byte(parameter1.toInt()); 
+      reg_addr = C2V_CONFIG0;
+      highlight_led_byte(reg_addr);
+      writeRegister(reg_addr, reg_value&0x1f);
+      read_value =  readRegister(reg_addr, 1);
+      highlight_led_byte(reg_addr);
+      Serial.print("C2V_CONFIG0");
+      Serial.print(" ");
+      Serial.println(read_value);
+
+    } else if (command == "C2V_CONFIG1") {
+      // read
+      reg_addr = C2V_CONFIG1;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 1);
+      read_value = read_value & 0x1f;
+      Serial.print("C2V_CONFIG1");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_C2V_CONFIG1") {
+      // set
+      reg_value = (byte) byte(parameter1.toInt()); 
+      reg_addr = C2V_CONFIG1;
+      highlight_led_byte(reg_addr);
+      writeRegister(reg_addr, reg_value&0x1f);
+      read_value =  readRegister(reg_addr, 1);
+      highlight_led_byte(reg_addr);
+      Serial.print("C2V_CONFIG1");
+      Serial.print(" ");
+      Serial.println(read_value);
+
+    } else if (command == "C2V_CONFIG2") {
+      // read
+      reg_addr = C2V_CONFIG2;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 1);
+      read_value = read_value & 0x1f;
+      Serial.print("C2V_CONFIG2");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_C2V_CONFIG2") {
+      // set
+      reg_value = (byte) byte(parameter1.toInt()); 
+      reg_addr = C2V_CONFIG2;
+      highlight_led_byte(reg_addr);
+      writeRegister(reg_addr, reg_value&0x1f);
+      read_value =  readRegister(reg_addr, 1);
+      highlight_led_byte(reg_addr);
+      Serial.print("C2V_CONFIG2");
+      Serial.print(" ");
+      Serial.println(read_value);
+
+
+
+
+    // For setting the DAC values, two write operations are needed for the MSB and LSB..
+    // a re-conversion of the string parameter to integer  is also required
+    } else if (command == "VCOMP_X1") {
+      // Reads two consecutive bytes
+      reg_addr = VCOMP_X1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VCOMP_X1");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VCOMP_X1") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VCOMP_X1_MSB, VCOMP_X1_LSB, dac_value);
+      reg_addr = VCOMP_X1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VCOMP_X1");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+    } else if (command == "VEXC_X1") {
+      // Reads two consecutive bytes
+      reg_addr = VEXC_X1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VEXC_X1");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VEXC_X1") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VEXC_X1_MSB, VEXC_X1_LSB, dac_value);
+      reg_addr = VEXC_X1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VEXC_X1");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+    } else if (command == "VACT_X1") {
+      // Reads two consecutive bytes
+      reg_addr = VACT_X1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VACT_X1");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VACT_X1") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VACT_X1_MSB, VACT_X1_LSB, dac_value);
+      reg_addr = VACT_X1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VACT_X1");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+  
+    } else if (command == "VCOMP_X2") {
+      // Reads two consecutive bytes
+      reg_addr = VCOMP_X2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VCOMP_X2");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VCOMP_X2") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VCOMP_X2_MSB, VCOMP_X2_LSB, dac_value);
+      reg_addr = VCOMP_X2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VCOMP_X2");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+    } else if (command == "VEXC_X2") {
+      // Reads two consecutive bytes
+      reg_addr = VEXC_X2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VEXC_X2");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VEXC_X2") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VEXC_X2_MSB, VEXC_X2_LSB, dac_value);
+      reg_addr = VEXC_X2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VEXC_X2");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+    } else if (command == "VACT_X2") {
+      // Reads two consecutive bytes
+      reg_addr = VACT_X2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VACT_X2");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VACT_X2") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VACT_X2_MSB, VACT_X2_LSB, dac_value);
+      reg_addr = VACT_X2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VACT_X2");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+      } else if (command == "VCOMP_Y1") {
+      // Reads two consecutive bytes
+      reg_addr = VCOMP_Y1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VCOMP_Y1");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VCOMP_Y1") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VCOMP_Y1_MSB, VCOMP_Y1_LSB, dac_value);
+      reg_addr = VCOMP_Y1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VCOMP_Y1");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+    } else if (command == "VEXC_Y1") {
+      // Reads two consecutive bytes
+      reg_addr = VEXC_Y1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VEXC_Y1");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VEXC_Y1") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VEXC_Y1_MSB, VEXC_Y1_LSB, dac_value);
+      reg_addr = VEXC_Y1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VEXC_Y1");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+    } else if (command == "VACT_Y1") {
+      // Reads two consecutive bytes
+      reg_addr = VACT_Y1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VACT_Y1");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VACT_Y1") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VACT_Y1_MSB, VACT_Y1_LSB, dac_value);
+      reg_addr = VACT_Y1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VACT_Y1");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+  
+
+    } else if (command == "VCOMP_Y2") {
+      // Reads two consecutive bytes
+      reg_addr = VCOMP_Y2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VCOMP_Y2");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VCOMP_Y2") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VCOMP_Y2_MSB, VCOMP_Y2_LSB, dac_value);
+      reg_addr = VCOMP_Y2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VCOMP_Y2");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+    } else if (command == "VEXC_Y2") {
+      // Reads two consecutive bytes
+      reg_addr = VEXC_Y2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VEXC_Y2");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VEXC_Y2") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VEXC_Y2_MSB, VEXC_Y2_LSB, dac_value);
+      reg_addr = VEXC_Y2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VEXC_Y2");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+    } else if (command == "VACT_Y2") {
+      // Reads two consecutive bytes
+      reg_addr = VACT_Y2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VACT_Y2");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VACT_Y2") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VACT_Y2_MSB, VACT_Y2_LSB, dac_value);
+      reg_addr = VACT_Y2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VACT_Y2");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+
+
+      } else if (command == "VCOMP_Z1") {
+      // Reads two consecutive bytes
+      reg_addr = VCOMP_Z1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VCOMP_Z1");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VCOMP_Z1") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VCOMP_Z1_MSB, VCOMP_Z1_LSB, dac_value);
+      reg_addr = VCOMP_Z1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VCOMP_Z1");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+    } else if (command == "VEXC_Z1") {
+      // Reads two consecutive bytes
+      reg_addr = VEXC_Z1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VEXC_Z1");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VEXC_Z1") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VEXC_Z1_MSB, VEXC_Z1_LSB, dac_value);
+      reg_addr = VEXC_Z1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VEXC_Z1");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+    } else if (command == "VACT_Z1") {
+      // Reads two consecutive bytes
+      reg_addr = VACT_Z1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VACT_Z1");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VACT_Z1") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VACT_Z1_MSB, VACT_Z1_LSB, dac_value);
+      reg_addr = VACT_Z1_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VACT_Z1");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+  
+
+      } else if (command == "VCOMP_Z2") {
+      // Reads two consecutive bytes
+      reg_addr = VCOMP_Z2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VCOMP_Z2");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VCOMP_Z2") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VCOMP_Z2_MSB, VCOMP_Z2_LSB, dac_value);
+      reg_addr = VCOMP_Z2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VCOMP_Z2");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+    } else if (command == "VEXC_Z2") {
+      // Reads two consecutive bytes
+      reg_addr = VEXC_Z2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VEXC_Z2");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VEXC_Z2") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VEXC_Z2_MSB, VEXC_Z2_LSB, dac_value);
+      reg_addr = VEXC_Z2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VEXC_Z2");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+    } else if (command == "VACT_Z2") {
+      // Reads two consecutive bytes
+      reg_addr = VACT_Z2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      Serial.print("VACT_Z2");
+      Serial.print(" ");
+      Serial.println(read_value);
+    } else if (command == "set_VACT_Z2") {
+      // set
+      int dac_value = 0;
+      dac_value = parameter1.toInt();
+      SetDAC_Value(VACT_Z2_MSB, VACT_Z2_LSB, dac_value);
+      reg_addr = VACT_Z2_MSB;
+      highlight_led_byte(reg_addr);
+      read_value =  readRegister(reg_addr, 2);
+      highlight_led_byte(reg_addr);
+      Serial.print("VACT_Z2");
+      Serial.print(" ");  
+      Serial.println(read_value);
+    
+  
+
+
+
     } else {
       Serial.println("Something else");
     }
     
-    // // The first byte received is the instruction
-    // Order order_received = read_order();
-    //  //      Serial.print("Order: ");Serial.println(order_received);e
-
-    // switch(order_received){
-    //   case device_id:
-    //     read_value =  readRegister(DEVICE_ID_ADDR, 1);
-    //     Serial.print("value: \t");
-    //     Serial.println(read_value, HEX);
-    //     highlight_led_byte(read_value);
-    //     break;
-    //   case mode:
-    //     read_value =  readRegister(DEVICE_ID_ADDR, 1);
-    //     Serial.print("value: \t");
-    //     Serial.println(read_value, HEX);
-    //     highlight_led_byte(read_value);
-    //     break;
-
-
-
-
-
-    //   case EOL:
-    //     //ignore
-    //     break;
-    //   default:
-    //     Serial.println("Unrecognized command");
-          
-    //     break;
-  
-
-    // }
-
 
 
   }
 }
+
+int SetDAC_Value(byte ADDR_MSB, byte ADDR_LSB, int dac_value){
+  // Sets the MSB and LSB byte registers for a short dac_value
+  byte reg_addr;
+  byte reg_value;
+  int aux = 0;
+  reg_addr = ADDR_MSB;
+  aux = dac_value & 0xff00;
+  aux = aux >> 8;
+  reg_value = (byte) aux;
+  highlight_led_byte(reg_addr);
+  writeRegister(reg_addr, reg_value);
+  reg_addr = ADDR_LSB;
+  aux = dac_value & 0x00ff;
+  reg_value = (byte) aux ;
+  highlight_led_byte(reg_addr);
+  writeRegister(reg_addr, reg_value);
+  return 0;
+
+}
+
 
 
 String splitStringDelimiter(String str, int split_index, char delimiter){
@@ -294,7 +907,8 @@ void writeRegister(byte thisRegister, byte thisValue) {
 //Read byte from the FPGA:
 unsigned int readRegister(byte thisRegister, int bytesToRead ) {
   byte inByte = 0;           // incoming byte from the SPI
-  byte result = 0;
+  unsigned int result = 0;
+  
   // Serial.print(thisRegister, BIN);
   // Serial.print("\t");
   // FPGA expects the register address in the upper 7 bits
@@ -313,17 +927,25 @@ unsigned int readRegister(byte thisRegister, int bytesToRead ) {
   // send a value of 0 to read the first byte returned:
   result = SPI.transfer(0x00);
   // decrement the number of bytes left to read:
+
+
   bytesToRead--;
   // if you still have another byte to read:
-  if (bytesToRead > 0) {
+  
+  while (bytesToRead > 0) {
     // shift the first byte left, then get the second byte:
     result = result << 8;
     inByte = SPI.transfer(0x00);
     // combine the byte you just got with the previous one:
     result = result | inByte;
     // decrement the number of bytes left to read:
+   
     bytesToRead--;
   }
+  
+
+      // Serial.println("finished");
+
   // take the chip select high to de-select:
   digitalWrite(chipSelectPin, HIGH);
   // release control of the SPI port

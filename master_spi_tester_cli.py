@@ -20,12 +20,12 @@ PLOT_UPDATE = 2
 
 
 
-data_labels = ["x0_left", "x0_right",
-               "x1_left", "x1_right",
-               "y0_left", "y0_right",
+data_labels = ["x1_left", "x1_right",
+               "x2_left", "x2_right",
                "y1_left", "y1_right",
-               "z0_left", "z0_right",
-               "z1_left", "z1_right"]
+               "y2_left", "y2_right",
+               "z1_left", "z1_right",
+               "z2_left", "z2_right"]
 
 def read_serial_all(ser, timeout=MESSAGE_TIMEOUT):
     assert type(ser) == type(serial.Serial()), "must provide opened serial port instance"
@@ -82,8 +82,6 @@ def write_register(port, baudrate, register_address, value, message_timeout=MESS
 
 
 
-
-
 def read_register(port, baudrate, register_address, message_timeout=MESSAGE_TIMEOUT, serial_timeout=SERIAL_TIMEOUT):
      # Connecting
     with serial.Serial(port, baudrate, timeout=SERIAL_TIMEOUT) as ser:
@@ -126,7 +124,7 @@ def parse_data_single_line(data_line, delimiter=" "):
     data_array = [int(d) for d in data_array]
     return data_array
 
-def read_data_loop(port, baudrate, N=-1,  message_timeout=MESSAGE_TIMEOUT, serial_timeout=SERIAL_TIMEOUT, save_filename=None):
+def read_data_loop(port, baudrate, N=-1,  message_timeout=MESSAGE_TIMEOUT, serial_timeout=SERIAL_TIMEOUT, save_filename=None, plot_refresh_rate=PLOT_UPDATE):
     """ Continuously reads the data available in the memory and parses it
     """
 
@@ -153,6 +151,29 @@ def read_data_loop(port, baudrate, N=-1,  message_timeout=MESSAGE_TIMEOUT, seria
 
         with serial.Serial(port, baudrate, timeout=serial_timeout) as ser:
 
+            """ Execute start sequence
+
+            
+            Set mode: single or continuous
+            Set run: if single, set read flag to 1
+            Set wakeup: wakeup 1
+            
+            """
+            wakeup = 0
+            data_line = set_wakeup(ser, wakeup,  message_timeout=message_timeout, )
+            print(data_line)
+            
+            mode = 1
+            data_line = set_mode(ser, mode,  message_timeout=message_timeout, )
+            print(data_line)
+            run = 1
+            data_line = set_run(ser, run,  message_timeout=message_timeout, )
+            print(data_line)
+            wakeup = 1
+            data_line = set_wakeup(ser, wakeup,  message_timeout=message_timeout, )
+            print(data_line)
+
+
             tic = time.time()
             for i in range(N):
                 # Checks if data available
@@ -160,6 +181,11 @@ def read_data_loop(port, baudrate, N=-1,  message_timeout=MESSAGE_TIMEOUT, seria
                 # while 1:
                 #   if check_data_pagination_available():
                 #       break
+                
+                fifo_count = check_fifo_count(ser)
+                print("count is: ",fifo_count)
+                while(check_fifo_count(ser)==0):
+                    continue
 
 
                 command = "read_data"
@@ -183,10 +209,10 @@ def read_data_loop(port, baudrate, N=-1,  message_timeout=MESSAGE_TIMEOUT, seria
 
                 if plot_flag:
                     toc = time.time()
-                    if toc-tic > PLOT_UPDATE:
+                    if toc-tic > plot_refresh_rate:
                         tic = time.time()
                         plot_data_segment(time_array[-plot_samples:], data_array[-plot_samples:,:])
-                time.sleep(0.1)
+                # time.sleep(0.1)
         
         if save_flag:
             fd.close()
@@ -250,14 +276,79 @@ def plot_data_segment(time, data):
     plot_ax.set_ylim(data.min(), data.max())
     plot_figure.canvas.draw()
     plot_figure.canvas.flush_events()
-    print("flushed")
+    # print("flushed")
     # plt.show()
 
 
-
-
-
         
+def set_dac_value(port, baudrate, dac_signal, dac_channel, dac_value,  message_timeout=MESSAGE_TIMEOUT, serial_timeout=SERIAL_TIMEOUT):
+    with serial.Serial(port, baudrate, timeout=serial_timeout) as ser:
+        dac_signal = dac_signal.upper()
+        dac_channel = dac_channel.upper()
+        dac_value = int(dac_value)
+        command = "set_%s_%s"%(dac_signal, dac_channel)
+        data = bytes("%s %d \n"%(command, dac_value), 'ascii')
+        ser.write(data)
+        data_line = read_serial_line(ser, timeout=message_timeout)
+    return data_line
+
+def set_phase_delay(port, baudrate, phase_delay,  message_timeout=MESSAGE_TIMEOUT, serial_timeout=SERIAL_TIMEOUT):
+    with serial.Serial(port, baudrate, timeout=serial_timeout) as ser:
+        command = "set_C2V_CONFIG0"
+        data = bytes("%s %d \n"%(command, phase_delay), 'ascii')
+        ser.write(data)
+        data_line = read_serial_line(ser, timeout=message_timeout)
+    return data_line
+
+def set_en_oncyc(port, baudrate, en_oncyc,  message_timeout=MESSAGE_TIMEOUT, serial_timeout=SERIAL_TIMEOUT):
+    with serial.Serial(port, baudrate, timeout=serial_timeout) as ser:
+        command = "set_C2V_CONFIG1"
+        data = bytes("%s %d \n"%(command, en_oncyc), 'ascii')
+        ser.write(data)
+        data_line = read_serial_line(ser, timeout=message_timeout)
+    return data_line
+
+
+def set_en_onperiod(port, baudrate, en_onperiod,  message_timeout=MESSAGE_TIMEOUT, serial_timeout=SERIAL_TIMEOUT):
+    with serial.Serial(port, baudrate, timeout=serial_timeout) as ser:
+        command = "set_C2V_CONFIG2"
+        data = bytes("%s %d \n"%(command, en_onperiod), 'ascii')
+        ser.write(data)
+        data_line = read_serial_line(ser, timeout=message_timeout)
+    return data_line
+
+def set_mode(ser, mode,  message_timeout=MESSAGE_TIMEOUT):
+    command = "set_mode"
+    data = bytes("%s %d \n"%(command, mode), 'ascii')
+    ser.write(data)
+    data_line = read_serial_line(ser, timeout=message_timeout)
+    return data_line
+
+def set_run(ser, run,  message_timeout=MESSAGE_TIMEOUT):
+    command = "set_run"
+    data = bytes("%s %d \n"%(command, run), 'ascii')
+    ser.write(data)
+    data_line = read_serial_line(ser, timeout=message_timeout)
+    return data_line
+
+def set_wakeup(ser, wakeup,  message_timeout=MESSAGE_TIMEOUT):
+    command = "set_wakeup"
+    data = bytes("%s %d \n"%(command, wakeup), 'ascii')
+    ser.write(data)
+    data_line = read_serial_line(ser, timeout=message_timeout)
+    return data_line
+
+
+def check_fifo_count(ser):
+    # reads the fifo count register and returns the count
+    command = "fifo_count"
+    ser.write(bytes("%s\n"%(command), 'ascii'))
+    data_line = read_serial_line(ser, timeout=message_timeout)
+    reg, count = data_line.strip().split(" ")
+    count = int(count)
+    return count
+
+
 
 CONFIG_FILENAME = 'master_spi_tester.ini'
 if __name__ == "__main__":
@@ -289,12 +380,16 @@ if __name__ == "__main__":
     # argParser.add_argument("-rdN", "--read_data_length", help="Read data flag")
     argParser.add_argument("-rm", "--read_memory", help="Read memory flag", action="store_true")
     argParser.add_argument("-rl", "--read_memory_length", metavar='read_memory_length', help="Read memory length")
-    argParser.add_argument("-a", "--reg_addr", metavar='register_address',
-                            help="Register address")
-    argParser.add_argument("-v", "--reg_value", metavar='write_value',
-                            help="Write_value")
+    argParser.add_argument("-a", "--reg_addr", metavar='register_address',help="Register address")
+    argParser.add_argument("-v", "--reg_value", metavar='write_value',help="Write_value")
     argParser.add_argument("-plot", "--plot", help="Plots the retreived read_data samples. Passed argument is number of samples to plot.", nargs='?', const=100, type=int)
+    argParser.add_argument("--plot_refresh_rate", help="Set the plot refresh rate", type=float)
     argParser.add_argument("-s", "--save_file", nargs='?', )
+    argParser.add_argument("--dac", nargs=3, metavar=("VACT|VEXC|VCOMP", "X1|X2|..|Z2", "VALUE"), help="Set respective DAC (16bit) register value. Example: -dac VACT X1 1024")
+    argParser.add_argument("--phase_delay", type=int, metavar='PhaseDelay',help="C2V Configuration. PhaseDelay: defines the delay between modulation and demodualtion signals (delay = Nx7.2deg)")
+    argParser.add_argument("--en_oncyc", type=int, metavar='enable_on_cycle_count',help="C2V Configuration. EN_onCycCnt: defines the number of delay cycles between demodualtion signal and the switch EN (delay = Nx20ns)")
+    argParser.add_argument("--en_onperiod", type=int, metavar='enable_on_period',help="C2V Configuration. EN_onPeriod: defines the number of cycles the EN stays active (Period= Nx20ns)")
+    # argParser.add_argument("--mode", type=int, metavar='operation_mode',help="Mode 0 = single acquisition, mode 1 = continuous")
     # argParser.add_argument("--save_file", help="Read memory flag", action="store_true")
 
     
@@ -314,6 +409,10 @@ if __name__ == "__main__":
         config['DEFAULT']["SerialTimeout"] = args.serial_timeout
     if args.timeout is not None:
         config['DEFAULT']["MessageTimeout"] = args.timeout
+    if args.plot_refresh_rate is not None:
+        config['DEFAULT']["plotrefreshrate"] = str(args.plot_refresh_rate)
+
+
 
     with open(CONFIG_FILENAME, 'w') as configfile:
         config.write(configfile)
@@ -323,6 +422,7 @@ if __name__ == "__main__":
     baudrate = int(config['DEFAULT']["BaudRate"])
     serial_timeout = float(config['DEFAULT']["SerialTimeout"])
     message_timeout = float(config['DEFAULT']["MessageTimeout"])
+    plot_refresh_rate = float(config['DEFAULT']["plotrefreshrate"])
 
     print("Port is %s"%(port))
     print("Baud Rate is %s"%(baudrate))
@@ -339,6 +439,24 @@ if __name__ == "__main__":
 
     save_file_flag = False
     save_filename = None
+
+    # Setting phase configuration values
+    if args.phase_delay is not None:
+        phase_delay = args.phase_delay
+        data_line = set_phase_delay(port, baudrate, phase_delay,  message_timeout=message_timeout, serial_timeout=serial_timeout)
+        print(data_line)
+
+    if args.en_oncyc is not None:
+        en_oncyc = args.en_oncyc
+        data_line = set_en_oncyc(port, baudrate, en_oncyc,  message_timeout=message_timeout, serial_timeout=serial_timeout)
+        print(data_line)
+      
+    if args.en_onperiod is not None:
+        en_onperiod = args.en_onperiod
+        print(en_onperiod)
+        data_line = set_en_onperiod(port, baudrate, en_onperiod,  message_timeout=message_timeout, serial_timeout=serial_timeout)
+        print(data_line)
+      
 
 
     if args.write:
@@ -371,7 +489,8 @@ if __name__ == "__main__":
         N = args.read_data
         data = read_data_loop(port, baudrate, N, 
                               message_timeout=message_timeout, serial_timeout=serial_timeout,
-                              save_filename=args.save_file)
+                              save_filename=args.save_file, 
+                              plot_refresh_rate=plot_refresh_rate)
             # data = parse_data_single_line(data_line)
 
 
@@ -383,6 +502,18 @@ if __name__ == "__main__":
         read_memory_length = int(args.read_memory_length, 16)
         data_line = read_memory(port, baudrate, reg_addr, read_memory_length, message_timeout=message_timeout, serial_timeout=serial_timeout)
         print(data_line)
+
+    elif args.dac is not None:
+        dac_signal, dac_channel, dac_value = args.dac
+        dac_signal = dac_signal.upper()
+        dac_channel = dac_channel.upper()
+        dac_value = int(dac_value)
+
+        data_line = set_dac_value(port, baudrate, dac_signal, dac_channel, dac_value,  message_timeout=message_timeout, serial_timeout=serial_timeout)
+        print(data_line)
+    
+    
+      
 
 
 
