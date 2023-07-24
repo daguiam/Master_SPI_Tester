@@ -183,7 +183,7 @@ def read_data_loop(port, baudrate, N=-1,  message_timeout=MESSAGE_TIMEOUT, seria
                 #       break
                 
                 fifo_count = check_fifo_count(ser)
-                print("count is: ",fifo_count)
+                print("FIFO count is: ",fifo_count)
                 while(check_fifo_count(ser)==0):
                     continue
 
@@ -348,6 +348,15 @@ def check_fifo_count(ser):
     count = int(count)
     return count
 
+        
+def set_debug_acquisition(port, baudrate, debug_acquisition, message_timeout=MESSAGE_TIMEOUT, serial_timeout=SERIAL_TIMEOUT):
+    with serial.Serial(port, baudrate, timeout=serial_timeout) as ser:
+        command = "debug_acquisition"
+        data = bytes("%s %d \n"%(command, debug_acquisition), 'ascii')
+        ser.write(data)
+        data_line = read_serial_line(ser, timeout=message_timeout)
+        return data_line
+
 
 
 CONFIG_FILENAME = 'master_spi_tester.ini'
@@ -378,6 +387,8 @@ if __name__ == "__main__":
     argParser.add_argument("-r", "--read", help="Read flag", action="store_true")
     argParser.add_argument("-rd", "--read_data", help="Reads 1 or the given number of samples of all data", nargs='?', const=1, type=int)
     # argParser.add_argument("-rdN", "--read_data_length", help="Read data flag")
+    argParser.add_argument("--debug_acquisition", metavar='debug_acquisition',help="set flag to debug acquisition by sending synthetic data")
+
     argParser.add_argument("-rm", "--read_memory", help="Read memory flag", action="store_true")
     argParser.add_argument("-rl", "--read_memory_length", metavar='read_memory_length', help="Read memory length")
     argParser.add_argument("-a", "--reg_addr", metavar='register_address',help="Register address")
@@ -510,6 +521,11 @@ if __name__ == "__main__":
         dac_value = int(dac_value)
 
         data_line = set_dac_value(port, baudrate, dac_signal, dac_channel, dac_value,  message_timeout=message_timeout, serial_timeout=serial_timeout)
+        print(data_line)
+    
+    elif args.debug_acquisition is not None:
+
+        data_line = set_debug_acquisition(port, baudrate, args.debug_acquisition, message_timeout=message_timeout, serial_timeout=serial_timeout)
         print(data_line)
     
     

@@ -55,6 +55,8 @@ int LED_array_pins[] = {33, 34, 35, 36, 37, 38, 39, 40};
 const int LED_array_pins_size = 8;
 
 
+int DEBUG_ACQUISITION = 0;
+
 
 void setup() {
   // digitalWrite(SS, HIGH);  // Start with SS high
@@ -168,7 +170,7 @@ void loop() {
 
         
         // ####### DEBUG PURPOSES ONLY ############
-        if (i==0){
+        if (i==11 && DEBUG_ACQUISITION){
           int sine_value = (int) 1000*sin(2*PI*ni/20)+500;
           read_value = sine_value;
           ni++;
@@ -179,6 +181,16 @@ void loop() {
       }
       Serial.println("");
       
+      
+
+
+    } else if (command == "debug_acquisition") {
+      // set wakeup
+      int value = parameter1.toInt();
+      DEBUG_ACQUISITION = value;
+      Serial.print("DEBUG_ACQUISITION");
+      Serial.print(" ");
+      Serial.println(value);
       
     } else if (command == "read_memory") {
       // Reads memory starting from reg_addr and for reg_value bytes
