@@ -103,9 +103,13 @@ def read_data(port, baudrate, message_timeout=MESSAGE_TIMEOUT, serial_timeout=SE
     return data
 
         
-def read_memory(port, baudrate, register_address, length,  message_timeout=MESSAGE_TIMEOUT, serial_timeout=SERIAL_TIMEOUT):
+def read_memory(port, baudrate, register_address, length,  hex=False, message_timeout=MESSAGE_TIMEOUT, serial_timeout=SERIAL_TIMEOUT):
     with serial.Serial(port, baudrate, timeout=serial_timeout) as ser:
-        command = "read_memory"
+
+        if hex:
+            command = "read_memory_hex"
+        else:
+            command = "read_memory"
         data = bytes("%s %d %d\n"%(command, register_address, length), 'ascii')
         ser.write(data)
         data_line = read_serial_line(ser, timeout=message_timeout)
@@ -185,6 +189,7 @@ def read_data_loop(port, baudrate, N=-1,  message_timeout=MESSAGE_TIMEOUT, seria
                 fifo_count = check_fifo_count(ser)
                 print("FIFO count is: ",fifo_count)
                 while(check_fifo_count(ser)==0):
+                    # print("checking fifo")
                     continue
 
 
@@ -390,6 +395,7 @@ if __name__ == "__main__":
     argParser.add_argument("--debug_acquisition", metavar='debug_acquisition',help="set flag to debug acquisition by sending synthetic data")
 
     argParser.add_argument("-rm", "--read_memory", help="Read memory flag", action="store_true")
+    argParser.add_argument("-rmh", "--read_memory_hex", help="Read memory HEX flag", action="store_true")
     argParser.add_argument("-rl", "--read_memory_length", metavar='read_memory_length', help="Read memory length")
     argParser.add_argument("-a", "--reg_addr", metavar='register_address',help="Register address")
     argParser.add_argument("-v", "--reg_value", metavar='write_value',help="Write_value")
@@ -512,6 +518,16 @@ if __name__ == "__main__":
         reg_addr = int( args.reg_addr , 16)
         read_memory_length = int(args.read_memory_length, 16)
         data_line = read_memory(port, baudrate, reg_addr, read_memory_length, message_timeout=message_timeout, serial_timeout=serial_timeout)
+        print(data_line)
+
+
+    elif args.read_memory_hex:
+        assert args.reg_addr is not None, "read_memory_hex: must provide starting register address ."
+        assert args.read_memory_length is not None, "read_memory_hex: must provide lenght to read in bytes."
+
+        reg_addr = int( args.reg_addr , 16)
+        read_memory_length = int(args.read_memory_length, 16)
+        data_line = read_memory(port, baudrate, reg_addr, read_memory_length, hex=True, message_timeout=message_timeout, serial_timeout=serial_timeout)
         print(data_line)
 
     elif args.dac is not None:

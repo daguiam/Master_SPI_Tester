@@ -33,7 +33,7 @@ const int MOSI_pin = ??;
 const byte READ = 0b11111110;     // FPGA read command
 const byte WRITE = 0b00000001;   // FPGA write command
 
-#define SPI_CLK 4000000
+#define SPI_CLK 1000000
 #define SPI_MODE SPI_MODE0
 
 #define SERIAL_BAUDRATE 115200
@@ -126,6 +126,9 @@ void loop() {
     if (command == "device_id") {
       read_value =  readRegister(DEVID, 1);
       highlight_led_byte(read_value);
+        Serial.print(DEVID);
+      Serial.print(" ");
+      Serial.println(read_value);
 
     } else if (command == "write_reg") {
       writeRegister(reg_addr, reg_value);
@@ -199,7 +202,19 @@ void loop() {
       for (int i=0; i<reg_value; i++){
         read_value =  readRegister(reg_addr+i, 1);
         Serial.print(" ");
+        // Serial.print(read_value);
         Serial.print(read_value);
+      }
+      Serial.println("");
+    } else if (command == "read_memory_hex") {
+      // Reads memory starting from reg_addr and for reg_value bytes
+      highlight_led_byte(reg_addr);
+      Serial.print(reg_addr);
+      for (int i=0; i<reg_value; i++){
+        read_value =  readRegister(reg_addr+i, 1);
+        Serial.print(" ");
+        // Serial.print(read_value);
+        Serial.print(read_value, HEX);
       }
       Serial.println("");
   
