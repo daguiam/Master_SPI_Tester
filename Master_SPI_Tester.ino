@@ -38,6 +38,8 @@ const byte WRITE = 0b00000001;   // FPGA write command
 
 #define SERIAL_BAUDRATE 115200
 
+#define LED_TOGGLE_HALFPERIOD 500
+
 // Tester board with teensy by Pedro 2022:
 // Uneeded since using the SPI library and on teensy these are already the correct pinouts (no need to add SS pin)
 const int SS_pin = 10;
@@ -46,6 +48,11 @@ const int MISO_pin = 12;
 const int MOSI_pin = 11;
 
 const int chipSelectPin = SS_pin;
+
+int led_toggle_status = 1;
+const int LED_pin = 13;
+
+
 
 // const int LED_pin = LED_BUILTIN;
 
@@ -76,7 +83,9 @@ void setup() {
     int pin = LED_array_pins[i];
     pinMode(pin, OUTPUT);
   }
+  pinMode(LED_pin, OUTPUT);
 
+  digitalWrite(LED_pin, led_toggle_status);
 
 
   Serial.println("Master SPI Tester ");
@@ -88,6 +97,7 @@ void setup() {
 
 unsigned int ni = 0;
 
+long int tic = millis();
 
 void loop() {
   int read_value = 0xfffa;
@@ -99,6 +109,18 @@ void loop() {
   byte reg_addr = 0;
   byte reg_value = 0;
 
+  // Check timeout to toggle led
+  long int toc = millis();
+  if (toc-tic> LED_TOGGLE_HALFPERIOD){
+    led_toggle_status = led_toggle_status ^ 0x1;
+    tic = toc;
+  }
+  // digitalWrite(LED_pin, HIGH);
+
+  digitalWrite(LED_pin, led_toggle_status);
+
+      // Serial.print("led");
+      // Serial.println(led_toggle_status, DEC);
 
   if(Serial.available() > 0){
 
